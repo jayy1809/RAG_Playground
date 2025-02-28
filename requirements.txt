@@ -10,3 +10,4 @@ streamlitannotated-types==0.7.0
 pydantic==2.10.6
 pydantic_core==2.27.2
 typing_extensions==4.12.2
+streamlit==1.36.0
