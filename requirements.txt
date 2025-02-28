@@ -1,0 +1,9 @@
+httpx
+aiofiles
+asyncio
+fastapi
+uvicorn
+numpy
+pydantic
+pinecone
+streamlit
