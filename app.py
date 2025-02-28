@@ -1,4 +1,6 @@
 import streamlit as st
+import httpx
+import asyncio
 
 def initialize_session_state():
   
@@ -286,7 +288,7 @@ def dense_search_pipeline(key: str):
     else:
         st.warning("Please select the required models and dimensions.")
 
-def main():
+async def main():
     
     initialize_session_state()
     
@@ -304,7 +306,18 @@ def main():
     
     uploaded_file = st.file_uploader("Upload a file:", type=['json'])
     if uploaded_file:
-        st.session_state.file_uploaded = True
+        input_data = uploaded_file.read().decode("utf-8")
+        payload = {
+            "input_data": input_data
+        }
+        async with httpx.AsyncClient() as client:
+            response = await client.post('http://127.0.0.1:8000/upload-files', json = payload)
+            if response.status_code == 200:
+                st.success("Files uploaded successfully!")
+                st.json(response.json())
+                st.session_state.file_uploaded = True
+            else:
+                st.error(f"Upload failed")
     
     if not st.session_state.file_uploaded:
         st.warning("Please upload the JSON files for the pipelines to compare.")
@@ -345,4 +358,4 @@ def main():
             display_results_tabs('_2')
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

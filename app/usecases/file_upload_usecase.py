@@ -1,25 +1,24 @@
 import json
-from app.services.file_storage_service import file_storage_service
+from app.utils.file_utils import FileUtils
+from app.config.settings import Settings
+from fastapi import Depends
 
 class FileUploadUseCase:
-    def __init__(self, storage_service: file_storage_service):
-        self.storage_service = storage_service
+    def __init__(self, storage_utils: FileUtils = Depends()):
+        self.storage_utils = storage_utils
+        self.settings = Settings()
 
     def execute(self, request_data: dict):
         input_data_str = request_data["input_data"]
-        ground_truth_str = request_data["ground_truth"]
 
         input_data = json.loads(input_data_str)
-        ground_truth = json.loads(ground_truth_str)
 
-        if not isinstance(input_data, list) or not isinstance(ground_truth, list):
+        if not isinstance(input_data, list):
             raise ValueError("JSON data must be a list")
 
-        folder_path = "uploaded_files"
-        input_chunks_paths = self.storage_service.chunk_and_store(input_data, 1000, folder_path, "input_data")
-        ground_truth_chunks_paths = self.storage_service.chunk_and_store(ground_truth, 1000, folder_path, "ground_truth")
+        folder_path = self.settings.GROUND_TRUTH_FILE_STORE_PATH
+        input_chunks_paths = self.storage_utils.chunk_and_store(input_data, self.settings.GROUND_TRUTH_CHUNK_SIZE, folder_path, self.settings.GROUND_TRUTH_FILE_BASE_NAME)
 
         return {
-            "input_chunks": input_chunks_paths,
-            "ground_truth_chunks": ground_truth_chunks_paths
+            "input_chunks": input_chunks_paths
         }

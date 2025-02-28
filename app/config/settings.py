@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 
+
 class Settings(BaseSettings):
     PINECONE_API_KEY : str
     GROQ_API_KEY : str
@@ -18,6 +19,9 @@ class Settings(BaseSettings):
     PINECONE_RERANK_URL : str
     PINECONE_QUERY_URL : str
     PINECONE_LIST_INDEXES_URL : str
+    GROUND_TRUTH_CHUNK_SIZE: int = 10
+    GROUND_TRUTH_FILE_STORE_PATH: str = "uploaded_data"
+    GROUND_TRUTH_FILE_BASE_NAME: str ="gt_data"
 
     class Config:
         env_file = ".env"

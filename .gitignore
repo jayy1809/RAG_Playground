@@ -4,3 +4,5 @@ ragenv/
 make_directories.py 
 make_init.py
 ragPlayground/
+.venv
+/uploaded_data
