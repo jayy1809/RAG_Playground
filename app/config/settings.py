@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     LLAMA_CLOUD_API_KEY : str
     COHERE_API_KEY : str
     ZILLIS_API_KEY : str
-    JINA_AI_API_KEY : str
+    JINA_API_KEY : str
     UNSTRUCTURED_API_KEY : str
     GEMINI_API_KEY : str
     MONGO_URI :str
@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     PINECONE_RERANK_URL : str
     PINECONE_QUERY_URL : str
     PINECONE_LIST_INDEXES_URL : str
+    COHERE_RERANK_URL : str
+    JINA_RERANK_URL : str
     GROUND_TRUTH_CHUNK_SIZE: int = 10
     GROUND_TRUTH_FILE_STORE_PATH: str = "uploaded_data"
     GROUND_TRUTH_FILE_BASE_NAME: str ="gt_data"
