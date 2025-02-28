@@ -6,6 +6,7 @@ uvicorn
 numpy
 pydantic
 pinecone
+pinecone-text
 streamlitannotated-types==0.7.0
 pydantic==2.10.6
 pydantic_core==2.27.2
