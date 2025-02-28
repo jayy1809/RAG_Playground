@@ -1,0 +1,299 @@
+from typing import List, Optional, Dict, Any
+from app.config.settings import settings
+import httpx
+from fastapi import HTTPException
+import asyncio
+import logging
+from pinecone import Pinecone
+import time
+import json
+from datetime import datetime
+
+logger = logging.getLogger(__name__)
+
+class PineconeService:
+    def __init__(self):
+        self.pinecone_api_key = settings.PINECONE_API_KEY
+        self.api_version = settings.PINECONE_API_VERSION
+        self.index_url = settings.PINECONE_CREATE_INDEX_URL
+        self.dense_embed_url = settings.PINECONE_EMBED_URL
+        self.upsert_url = settings.PINECONE_UPSERT_URL
+        self.query_url = settings.PINECONE_QUERY_URL
+        self.list_index_url = settings.PINECONE_LIST_INDEXES_URL
+        self.semaphore = asyncio.Semaphore(10)
+        self.pc =  Pinecone(api_key = settings.PINECONE_API_KEY)
+        
+    async def list_pinecone_indexes(self):
+        url = self.list_index_url
+        
+        headers = {
+            "Api-Key": self.pinecone_api_key,
+            "X-Pinecone-API-Version": self.api_version
+        }
+
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url, headers=headers)
+                response.raise_for_status()
+                return response.json()
+        
+        except httpx.HTTPStatusError as e:
+                parsed_response = json.loads(response.content.decode("utf-8"))
+                error_message = parsed_response.get("error", {}).get("message", "Unknown error occurred")
+                logging.error(f"Error creating index: {error_message}")
+                raise HTTPException(status_code=400, detail = error_message)
+        except Exception as e:
+            logging.error(f"Error creating index: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
+
+    async def create_index(self, index_name: str, dimension: int, metric: str, cloud: str, region: str) -> Dict[str, Any]:
+        if self.pc.has_index(index_name) == False:
+            index_data = {
+                "name": index_name,
+                "dimension": dimension,
+                "metric": metric,
+                "spec":{
+                    "serverless":{
+                        "cloud": cloud,
+                        "region": region
+                    }
+                }
+            }
+
+            headers = {
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "Api-Key": self.pinecone_api_key,
+                "X-Pinecone-API-Version": self.api_version
+            }
+
+            try :
+                async with httpx.AsyncClient() as client:
+                    response = await client.post(self.index_url, headers=headers, json=index_data)
+                    response.raise_for_status()
+                    
+                    retry_count = 0
+                    max_retries = 30
+                    while retry_count < max_retries:
+                        status = self.pc.describe_index(index_name).get("status").get('state')
+                        logger.info(f"Index status: {status}")
+
+                        if status == "Ready":
+                            logger.info(f"Index {index_name} is ready")
+                            break
+
+                        retry_count += 1
+                        time.sleep(2)
+                    
+                    if retry_count > max_retries:
+                        raise HTTPException(status_code=500, detail="Index creation timed out")
+                    
+                    logger.info("Index Created")
+                    return response.json()
+                    
+            except httpx.HTTPStatusError as e:
+                parsed_response = json.loads(response.content.decode("utf-8"))
+                error_message = parsed_response.get("error", {}).get("message", "Unknown error occurred")
+                logging.error(f"Error creating index: {error_message}")
+                raise HTTPException(status_code=400, detail = error_message)
+            except Exception as e:
+                logging.error(f"Error creating index: {str(e)}")
+                raise HTTPException(status_code=500, detail=str(e))
+            
+        else:
+            logger.info("index already created")
+            return {
+                "host" : self.pc.describe_index(index_name).get("host")
+            }
+    
+    
+
+    async def upsert_format(chunks:list, vector_embeddings, sparse_embeddings, image_chunks:bool = False):
+        
+        if vector_embeddings is None or sparse_embeddings is None:
+            print("vector embeddings or sparse embeddings is None so sleep")
+            time.sleep(2)
+
+        vector_embeddings_usage = vector_embeddings["usage"].get("total_tokens")
+        sparse_embeddings_usage = sparse_embeddings["usage"].get("total_tokens")
+
+        
+        prefix = "image" if image_chunks else "text"
+
+        # file_path_name = file_path.split(".")[0]
+        results = []
+        for i in range(len(chunks)):
+            file_name = chunks[i]["file_name"]
+            result = {
+                "id":  f"{file_name}_#{prefix}_chunk_index_{i+1}",
+                "values": vector_embeddings["data"][i]["values"],
+                "metadata": {
+                    "text":  chunks[i]["text"],
+                    "file_name": f"{file_name}",
+                    "page_no": chunks[i].get("page_number", ""),
+                    "created_at": datetime.now().strftime(
+                        "%Y-%m-%d %H:%M:%S"
+                    ),
+                },
+                "sparse_values": {
+                    "indices": sparse_embeddings["data"][i]["sparse_indices"],
+                    "values": sparse_embeddings["data"][i]["sparse_values"]
+                }
+                
+            }
+            results.append(result)
+        
+        token_usage = {
+            "vector_embeddings_usage": vector_embeddings_usage,
+            "sparse_embeddings_usage": sparse_embeddings_usage
+        }
+        
+        with open("tokens_usage.txt", "a") as file:
+            file.write(json.dumps(token_usage, indent=4))
+        
+        return results
+
+
+
+    async def upsert_vectors(self, index_host, input, namespace):
+
+        print(f"length of input : {len(input)}")
+        headers = {
+            "Api-Key": self.pinecone_api_key,
+            "Content-Type": "application/json",
+            "X-Pinecone-API-Version": self.api_version
+        }
+
+        url = self.upsert_url.format(index_host)
+
+        payload = {
+            "vectors": input,
+            "namespace": namespace
+        }
+        try :
+            async with httpx.AsyncClient() as client:
+                response = await client.post(url = url, headers = headers, json = payload)
+                response.raise_for_status()
+                print("vectors upserted")
+                return response.json()
+        except httpx.HTTPError as e:
+            parsed_response = json.loads(response.content.decode("utf-8"))
+            error_message = parsed_response.get("error", {}).get("message", "Unknown error occurred")
+            logging.error(f"Error creating index: {error_message}")
+            raise HTTPException(status_code=400, detail = error_message)
+        
+        except Exception as e:
+            logging.error(f"Error creating index: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
+    
+
+
+    def hybrid_scale(dense, sparse, alpha: float):
+    
+        if alpha < 0 or alpha > 1:
+            raise ValueError("Alpha must be between 0 and 1")
+        # scale sparse and dense vectors to create hybrid search vecs
+        hsparse = {
+            'indices': sparse['sparse_indices'],
+            'values':  [v * (1 - alpha) for v in sparse['sparse_values']]
+        }
+        hdense = [v * alpha for v in dense]
+        return hdense, hsparse
+
+
+
+
+
+    async def pinecone_hybrid_query(self,index_host, namespace, top_k, alpha:int, query_vector_embeds: list, query_sparse_embeds: dict, include_metadata:bool, filter_dict: dict = None):
+
+        if query_vector_embeds is None or query_sparse_embeds is None:
+            print("vector embeddings or sparse embeddings is None so sleep")
+            time.sleep(2)
+        
+        headers = {
+            "Api-Key": self.pinecone_api_key,
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "X-Pinecone-API-Version": self.api_version
+        }
+
+        hdense , hsparse = self.hybrid_scale(query_vector_embeds["data"][0]["values"], query_sparse_embeds["data"][0], alpha)
+
+        print(f"length of vector embeddings : {len(query_vector_embeds['data'][0]['values'])}")
+        print(f"vector embeds : {query_vector_embeds['data'][0]['values']}")
+        print(f"sparse indices : {query_sparse_embeds['data'][0]['sparse_indices']}")
+        print(f"sparse values : {query_sparse_embeds['data'][0]['sparse_values']}")
+
+        payload = {
+            "includeValues": False,
+            "includeMetadata": include_metadata,
+            "vector": hdense,#vector_embeds["data"][0]["values"],
+            "sparseVector": {
+                "indices": hsparse.get("indices"), # sparse_embeds["data"][0]["sparse_indices"],
+                "values": hsparse.get("values")# sparse_embeds["data"][0]["sparse_values"]
+            },
+            "topK": top_k,
+            "namespace": namespace
+        }
+
+        if filter_dict:
+            payload["filter"] = filter_dict
+
+        url = self.query_url.format(index_host)
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(url, headers=headers, json=payload)
+                response.raise_for_status()
+                print("query executed")
+                return response.json()
+            
+        except httpx.HTTPError as e:
+            parsed_response = json.loads(response.content.decode("utf-8"))
+            error_message = parsed_response.get("error", {}).get("message", "Unknown error occurred")
+            logging.error(f"Error creating index: {error_message}")
+            raise HTTPException(status_code=400, detail = error_message)
+        
+        except Exception as e:
+            logging.error(f"Error creating index: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
+        
+
+
+
+    async def pinecone_query(self,index_host: str, namespace: str, top_k: int, vector: list, include_metadata: bool,filter_dict: dict = None):
+   
+        headers = {
+            "Api-Key": self.pinecone_api_key,
+            "Content-Type": "application/json",
+            "X-Pinecone-API-Version": self.api_version
+        }
+
+        payload = {
+            "namespace": namespace,
+            "vector": vector,
+            # "filter": filter_dict,
+            "topK": top_k,
+            "includeValues": False,
+            "includeMetadata": include_metadata
+        }
+        
+        if filter_dict:
+            payload["filter"] = filter_dict
+
+        url = self.query_url.format(index_host)
+
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(url, headers=headers, json=payload)
+                response.raise_for_status()
+                return response.json()
+        
+        except httpx.HTTPError as e:
+            parsed_response = json.loads(response.content.decode("utf-8"))
+            error_message = parsed_response.get("error", {}).get("message", "Unknown error occurred")
+            logging.error(f"Error creating index: {error_message}")
+            raise HTTPException(status_code=400, detail = error_message)
+        
+        except Exception as e:
+            logging.error(f"Error creating index: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))

@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     PINECONE_EMBED_URL : str
     PINECONE_UPSERT_URL : str
     PINECONE_RERANK_URL : str
+    PINECONE_QUERY_URL : str
+    PINECONE_LIST_INDEXES_URL : str
 
     class Config:
         env_file = ".env"
