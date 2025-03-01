@@ -36,41 +36,51 @@ class FileUploadUseCase:
             await f.write(json.dumps(enriched_data))
         return enriched_data
 
-    # async def process_single_chunk(self, chunk):
-    #     chunk_text = json.dumps(chunk)
-    #     questions = await self.llm_utils.generate_questions(chunk_text)
-    #     print(questions)
-    #     chunk_ref = {
-    #         "_id": chunk["_id"],
-    #         "keyword": chunk["keyword"],
-    #         "link": chunk["link"]
-    #     }
-    #     return [{"question": q, "chunk": chunk_ref} for q in questions]
-
-    # async def process_multi_chunk(self, chunks):
-    #     chunk_texts = [json.dumps(chunk) for chunk in chunks]
-    #     question = await self.llm_utils.generate_multi_chunk_question(chunk_texts)
-    #     chunk_refs = [{"_id": chunk["_id"], "keyword": chunk["keyword"], "link": chunk["link"]} for chunk in chunks]
-    #     return [{"chunk": chunk_refs[0], "question": question}]
-
-
     async def process_single_chunk(self, chunk):
         chunk_text = json.dumps(chunk)
         questions = await self.llm_utils.generate_questions(chunk_text)
-        # print(questions)
         chunk_ref = {"_id": chunk["_id"], "keyword": chunk["keyword"], "link": chunk["link"]}
         return [{"question": q, "chunks": [chunk_ref]} for q in questions]
 
     async def process_multi_chunk(self, chunks):
-        # print(chunks[0])
-        chunk_texts = [{ "text": chunk["text_content"], "_id": chunk["_id"] } for chunk in chunks]
-        # print(chunk_texts)
-        chunk_refs = [{"_id": chunk["_id"], "keyword": chunk["keyword"], "link": chunk["link"]} for chunk in chunks]
-        # print(type(chunk_texts[0]))
-        # print(chunk_refs)
-        response = await self.llm_utils.generate_multi_chunk_question(chunk_texts)
-        # print(response)
+        print(f"Input chunks type: {type(chunks)}")
+        print(f"First chunk type: {type(chunks[0]) if chunks else 'No chunks'}")
+
+        chunk_data_for_llm = []
+        for chunk in chunks:
+            if "text" not in chunk:
+                print(f"Warning: 'text' field missing in chunk: {chunk.keys()}")
+                text = chunk.get("content", "") or chunk.get("body", "") or str(chunk)
+            else:
+                text = chunk["text"]
+                
+        chunk_data_for_llm.append(
+            {
+                "text": chunk["text"],
+                "_id": chunk["_id"]
+            } for chunk in chunks
+        )
+ 
+        chunk_refs = [
+            {
+                "_id": chunk["_id"],
+                "keyword": chunk["keyword"],
+                "link": chunk["link"]
+            } for chunk in chunks
+        ]
+        print(f"Prepared chunk_data_for_llm: {chunk_data_for_llm[0] if chunk_data_for_llm else 'Empty'}")
+
+        response_json = await self.llm_utils.generate_multi_chunk_question(chunk_data_for_llm)
+
+        print(f"LLM response type: {type(response)}")
+        print(f"LLM response: {response}")
+        if isinstance(response_json, str):
+            response = json.loads(response_json)
+        else:
+            response = response_json
+        
         question, relevant_ids = response["question"], response["relevant_ids"]
+        
         relevant_chunks = [ref for ref in chunk_refs if ref["_id"] in relevant_ids]
         return [{"question": question, "chunks": relevant_chunks}]
 
@@ -94,10 +104,11 @@ class FileUploadUseCase:
                 settings.MAX_CHUNKS_FOR_MULTI_QUERY
             )
             selected_items = random.sample(chunks_with_metadata, min(num_chunks, len(chunks_with_metadata)))
-            task = self.process_multi_chunk(selected_items)
+            task = self.process_multi_chunk(list(selected_items))
             tasks.append(task)
         results = await asyncio.gather(*tasks)
-        dataset.extend(results)
+        for result in results:
+            dataset.extend(result)
         return dataset
 
     async def execute(self, request_data):
@@ -123,17 +134,14 @@ class FileUploadUseCase:
             # Prepare dataset for MongoDB by removing or regenerating _id fields
             mongo_dataset = []
             for item in complete_dataset:
-                new_item = item.copy()  # Avoid modifying the original
+                new_item = item.copy()
                 if "_id" in new_item:
-                    del new_item["_id"]  # Remove top-level _id if present
+                    del new_item["_id"]
                 mongo_dataset.append(new_item)
 
-            # print(complete_dataset)
             await self.gt_data_repo.clear_collection()
             await self.gt_data_repo.insert_documents(mongo_dataset)
-            # await self.gt_data_repo.insert_documents(complete_dataset)
 
-            # Storing GT Dat
             dataset_path = os.path.join(settings.UPLOAD_DIR, "rag_dataset.json")
             async with aiofiles.open(dataset_path, "w") as f:
                 await f.write(json.dumps(complete_dataset))

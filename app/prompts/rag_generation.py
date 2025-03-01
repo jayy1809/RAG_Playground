@@ -27,16 +27,6 @@ class RAGPrompts:
     @property
     def multi_chunk_question_prompt(self):
         return ChatPromptTemplate.from_template(
-            # """I'm going to provide you with several text chunks with chunk ids. Generate ONE question that requires synthesizing 
-            # information from multiple chunks to answer completely. The question should be complex enough 
-            # that it cannot be answered by any single chunk alone.
-            
-            # Text chunks:
-            # {combined_chunks}
-            
-            # Return only the question without any additional text or numbering."""
-
-            multi_chunk_question_prompt = ChatPromptTemplate.from_template(
             """You're provided with multiple text chunks, each with an '_id' and 'text'. 
                 Generate ONE complex question that requires synthesizing information from at least two chunks to answer fully, 
                 ensuring it cannot be answered by any single chunk alone. 
@@ -46,6 +36,16 @@ class RAGPrompts:
                     "question": "<your synthesized question>",
                     "relevant_ids": ["<id1>", "<id2>", ...]
                 }\n
-                Do not include additional text outside the JSON.\n\nText chunks: {combined_chunks}"""
-            )
+                Do not include additional text outside the JSON.\n\n
+                Text chunks: {combined_chunks}"""
         )
+                # Do not include additional text outside the JSON.\n\nText chunks: {chunks[0]}"""
+    
+            # """I'm going to provide you with several text chunks with chunk ids. Generate ONE question that requires synthesizing 
+            # information from multiple chunks to answer completely. The question should be complex enough 
+            # that it cannot be answered by any single chunk alone.
+            
+            # Text chunks:
+            # {combined_chunks}
+            
+            # Return only the question without any additional text or numbering."""
