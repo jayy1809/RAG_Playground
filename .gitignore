@@ -6,3 +6,4 @@ make_init.py
 ragPlayground/
 .venv
 /uploaded_data
+venv/
