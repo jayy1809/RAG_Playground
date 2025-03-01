@@ -7,3 +7,5 @@ ragPlayground/
 .venv
 /uploaded_data
 venv/
+/uploads
+.DS_Store

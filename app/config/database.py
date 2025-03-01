@@ -6,6 +6,7 @@ class DBHelper:
         self.client = AsyncIOMotorClient(settings.MONGODB_URL)
         self.db = self.client[settings.DATABASE_NAME]
         self.raw_data = self.db["raw_data"]
+        self.gt_data = self.db["gt_data"]
 
     async def connect(self):
         try:
@@ -28,7 +29,7 @@ class DBHelper:
             raise
 
     async def create_collections(self):
-        required_collections = ["raw_data"]
+        required_collections = ["raw_data", "gt_data"]
         existing_collections = await self.db.list_collection_names()
         for collection in required_collections:
             if collection not in existing_collections:

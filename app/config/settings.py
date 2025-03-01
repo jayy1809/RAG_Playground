@@ -20,22 +20,13 @@ class Settings(BaseSettings):
     PINECONE_RERANK_URL : str
     PINECONE_QUERY_URL : str
     PINECONE_LIST_INDEXES_URL : str
-<<<<<<< Updated upstream
-    COHERE_BASE_URL : str
-    JINA_BASE_URL : str
-    GROUND_TRUTH_CHUNK_SIZE: int = 10
-=======
-    # COHERE_RERANK_URL : str
-    # JINA_RERANK_URL : str
-    # GROUND_TRUTH_CHUNK_SIZE: int = 10
->>>>>>> Stashed changes
     GROUND_TRUTH_CHUNK_SIZE: int = 4
     GROUND_TRUTH_FILE_STORE_PATH: str = "uploaded_data"
     GROUND_TRUTH_FILE_BASE_NAME: str ="gt_data"
     MULTI_CHUNK_QUERIES_COUNT: int = 4
     MIN_CHUNKS_FOR_MULTI_QUERY: int = 2
     MAX_CHUNKS_FOR_MULTI_QUERY: int = 5
-    LLM_REQUEST_DELAY: float = 0.9
+    LLM_REQUEST_DELAY: float = 0.7
     CHUNK_TEXT_SIZE: int = 512
     CHUNK_TEXT_OVERLAP: int = 64
     UPLOAD_DIR: str = "uploads/"

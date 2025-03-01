@@ -1,76 +1,143 @@
 import json
-from app.utils.file_utils import FileUtils
-from app.utils.llm_utills import LLMUtils
-from app.config.settings import Settings
-from fastapi import Depends
+import os
+import aiofiles
+from uuid import uuid4
+import asyncio
+import random
+from app.config.settings import settings
+from app.repositories.raw_data_repo import RawDataRepo
+from app.repositories.gt_data_repo import GTDataRepo
+from app.utils.llm_utils import LLMUtils
 
 class FileUploadUseCase:
-    def __init__(self, storage_utils: FileUtils = Depends(), llm_utils: LLMUtils = Depends()):
-        self.storage_utils = storage_utils
-        self.llm_utils = llm_utils
-        self.settings = Settings()
+    def __init__(self):
+        self.raw_data_repo = RawDataRepo()
+        self.gt_data_repo = GTDataRepo()
+        self.llm_utils = LLMUtils()
 
-    def chunk_text(self, text, chunk_size=512, overlap=64):
-        return [text[i:i+chunk_size] for i in range(0, len(text), chunk_size - overlap)]
+    async def store_file_locally(self, file):
+        os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+        file_path = os.path.join(settings.UPLOAD_DIR, "raw_dataset.json")
+        async with aiofiles.open(file_path, "w") as f:
+            await f.write(file)
+        return file_path
 
-    def execute(self, request_data: dict):
-        input_data_str = request_data["input_data"]
-
-        input_data = json.loads(input_data_str)
-
-        if not isinstance(input_data, list):
+    async def process_and_enrich_json(self, file_path):
+        async with aiofiles.open(file_path, "r") as f:
+            content = await f.read()
+            data = json.loads(content)
+        if not isinstance(data, list):
             raise ValueError("JSON data must be a list")
+        enriched_data = []
+        for item in data:
+            item["_id"] = str(uuid4())
+            enriched_data.append(item)
+        async with aiofiles.open(file_path, "w") as f:
+            await f.write(json.dumps(enriched_data))
+        return enriched_data
 
-        folder_path = self.settings.GROUND_TRUTH_FILE_STORE_PATH
-        input_chunks_paths = self.storage_utils.chunk_and_store(input_data, self.settings.GROUND_TRUTH_CHUNK_SIZE, folder_path, self.settings.GROUND_TRUTH_FILE_BASE_NAME)
+    # async def process_single_chunk(self, chunk):
+    #     chunk_text = json.dumps(chunk)
+    #     questions = await self.llm_utils.generate_questions(chunk_text)
+    #     print(questions)
+    #     chunk_ref = {
+    #         "_id": chunk["_id"],
+    #         "keyword": chunk["keyword"],
+    #         "link": chunk["link"]
+    #     }
+    #     return [{"question": q, "chunk": chunk_ref} for q in questions]
 
+    # async def process_multi_chunk(self, chunks):
+    #     chunk_texts = [json.dumps(chunk) for chunk in chunks]
+    #     question = await self.llm_utils.generate_multi_chunk_question(chunk_texts)
+    #     chunk_refs = [{"_id": chunk["_id"], "keyword": chunk["keyword"], "link": chunk["link"]} for chunk in chunks]
+    #     return [{"chunk": chunk_refs[0], "question": question}]
+
+
+    async def process_single_chunk(self, chunk):
+        chunk_text = json.dumps(chunk)
+        questions = await self.llm_utils.generate_questions(chunk_text)
+        # print(questions)
+        chunk_ref = {"_id": chunk["_id"], "keyword": chunk["keyword"], "link": chunk["link"]}
+        return [{"question": q, "chunks": [chunk_ref]} for q in questions]
+
+    async def process_multi_chunk(self, chunks):
+        # print(chunks[0])
+        chunk_texts = [{ "text": chunk["text_content"], "_id": chunk["_id"] } for chunk in chunks]
+        # print(chunk_texts)
+        chunk_refs = [{"_id": chunk["_id"], "keyword": chunk["keyword"], "link": chunk["link"]} for chunk in chunks]
+        # print(type(chunk_texts[0]))
+        # print(chunk_refs)
+        response = await self.llm_utils.generate_multi_chunk_question(chunk_texts)
+        # print(response)
+        question, relevant_ids = response["question"], response["relevant_ids"]
+        relevant_chunks = [ref for ref in chunk_refs if ref["_id"] in relevant_ids]
+        return [{"question": question, "chunks": relevant_chunks}]
+
+    async def generate_single_chunk_queries(self, chunks_with_metadata):
         dataset = []
-        for chunk_path in input_chunks_paths:
-            with open(chunk_path, 'r') as f:
-                chunk_data = json.load(f)
-                for item in chunk_data:
-                    # Error is here - incorrect self reference in the method call
-                    # Original: chunks = self.chunk_text(self, item.get("text_content", ""))
-                    # Fixed version:
-                    text_content = item.get("text_content", "")
-                    if text_content:
-                        chunks = self.chunk_text(text_content)
-                        for chunk in chunks:
-                            questions = self.llm_utils.generate_questions(chunk)
-                            for question in questions:
-                                dataset.append({
-                                    'query': question,
-                                    'ground_truth': chunk,
-                                    'source': item.get('link', '')
-                                })
+        tasks = []
+        for item in chunks_with_metadata:
+            task = self.process_single_chunk(item)
+            tasks.append(task)
+        results = await asyncio.gather(*tasks)
+        for result in results:
+            dataset.extend(result)
+        return dataset
 
-        # dataset = []
-        # for chunk_path in input_chunks_paths:
-        #     with open(chunk_path, 'r') as f:
-        #         chunk_data = json.load(f)
-        #         for item in chunk_data:
-        #             chunks = self.chunk_text(self, item.get("text_content", ""))
-        #             for chunk in chunks:
-        #                 questions = self.llm_utils.generate_questions(chunk)
-        #                 for question in questions:
-        #                     dataset.append({
-        #                         'query': question,
-        #                         'ground_truth': chunk,
-        #                         'source': item['link']
-        #                     })
-                    # if text_content:
-                    #     questions = self.llm_utils.generate_questions(text_content)
-                    #     for question in questions:
-                    #         dataset.append({
-                    #             "query": question,
-                    #             "ground_truth": text_content,
-                    #             "source": item.get("link", "")
-                    #         })
+    async def generate_multi_chunk_queries(self, chunks_with_metadata):
+        dataset = []
+        tasks = []
+        for _ in range(settings.MULTI_CHUNK_QUERIES_COUNT):
+            num_chunks = random.randint(
+                settings.MIN_CHUNKS_FOR_MULTI_QUERY,
+                settings.MAX_CHUNKS_FOR_MULTI_QUERY
+            )
+            selected_items = random.sample(chunks_with_metadata, min(num_chunks, len(chunks_with_metadata)))
+            task = self.process_multi_chunk(selected_items)
+            tasks.append(task)
+        results = await asyncio.gather(*tasks)
+        dataset.extend(results)
+        return dataset
 
-        dataset_path = f"{folder_path}/rag_dataset.json"
-        with open(dataset_path, "w") as f:
-            json.dump(dataset, f)
+    async def execute(self, request_data):
+        try:
 
-        return {
-            "input_chunks": input_chunks_paths
-        }
+            # File Store
+            file = request_data.get("input_data")
+            if not isinstance(file, str):
+                raise ValueError("Input data must be a string")
+            file_path = await self.store_file_locally(file)
+            enriched_data = await self.process_and_enrich_json(file_path)
+            await self.raw_data_repo.clear_collection()
+            await self.raw_data_repo.insert_documents(enriched_data)
+            
+
+            # Generate Queries
+            single_chunk_dataset = await self.generate_single_chunk_queries(enriched_data)
+            # multi_chunk_dataset = await self.generate_multi_chunk_queries(enriched_data)
+            complete_dataset = single_chunk_dataset
+            # complete_dataset = multi_chunk_dataset
+            # complete_dataset = single_chunk_dataset + multi_chunk_dataset
+
+            # Prepare dataset for MongoDB by removing or regenerating _id fields
+            mongo_dataset = []
+            for item in complete_dataset:
+                new_item = item.copy()  # Avoid modifying the original
+                if "_id" in new_item:
+                    del new_item["_id"]  # Remove top-level _id if present
+                mongo_dataset.append(new_item)
+
+            # print(complete_dataset)
+            await self.gt_data_repo.clear_collection()
+            await self.gt_data_repo.insert_documents(mongo_dataset)
+            # await self.gt_data_repo.insert_documents(complete_dataset)
+
+            # Storing GT Dat
+            dataset_path = os.path.join(settings.UPLOAD_DIR, "rag_dataset.json")
+            async with aiofiles.open(dataset_path, "w") as f:
+                await f.write(json.dumps(complete_dataset))
+                
+            return {"data": "File processed and dataset generated successfully"}
+        except Exception as e:
+            raise Exception(str(e))

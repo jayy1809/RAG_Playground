@@ -8,7 +8,7 @@ class FileUploadController:
 
     async def upload_files(self, request_data: dict):
         try:
-            response_data = self.usecase.execute(request_data)
+            response_data = await self.usecase.execute(request_data)
             return JSONResponse(
                 content = {
                     "data": response_data,
@@ -18,18 +18,9 @@ class FileUploadController:
                 },
                 status_code=status.HTTP_200_OK
             )
+        except HTTPException as e:
+            raise e
         except Exception as e:
-            # raise HTTPException(
-            #     status_code = 500,
-            #     detail = JSONResponse(
-            #         content = {
-            #             "data": {},
-            #             "statuscode": 500,
-            #             "detail": "File upload failed",
-            #             "error": str(e)
-            #         },
-            #         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
-            #     )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail={
