@@ -9,6 +9,7 @@ import time
 import json
 from datetime import datetime
 from pinecone_text.sparse import BM25Encoder
+from urllib.parse import urljoin
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,12 @@ class EmbeddingService:
         self.dense_embed_url = settings.PINECONE_EMBED_URL
         self.pinecone_embedding_url = settings.PINECONE_EMBED_URL
         self.pinecone_api_version = settings.PINECONE_API_VERSION
+        self.cohere_base_url = settings.COHERE_BASE_URL
+        self.cohere_api_key = settings.COHERE_API_KEY
+        self.jina_api_key = settings.JINA_API_KEY
+        self.jina_base_url = settings.JINA_BASE_URL
+        self.EMBED_SUFFIX = "embed"
+        self.JINA_EMBED_SUFFIX = "embeddings"
 
 
     async def pinecone_dense_embeddings(self, 
@@ -63,7 +70,6 @@ class EmbeddingService:
 
 
     def pinecone_sparse_embeddings(self, inputs):
-
         try:
             text_list = []
             for input in inputs:
@@ -77,5 +83,88 @@ class EmbeddingService:
         except Exception as e:
             logging.error(f"Error creating index: {str(e)}")
             raise HTTPException(status_code=500, detail=str(e))
-
         
+    
+    async def cohere_dense_embeddings(self, model_name: str, texts: list[str], input_type:str = "search_document"):
+
+        url = urljoin(self.cohere_base_url, self.EMBED_SUFFIX)
+
+        headers = {
+            "accept": "application/json",
+            "content-type": "application/json",
+            "Authorization": f"Bearer {self.cohere_api_key}"
+        }
+        data = {
+            "model": model_name,
+            "texts": texts,
+            "input_type": input_type,
+            "embedding_types": ["float"]
+        }
+        
+        try :
+            async with httpx.AsyncClient() as client:
+                response = await client.post(url, headers=headers, json=data)
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPStatusError as e:
+            logging.error(f"HTTP error: {e.response.status_code} - {str(e)}")
+            raise HTTPException(
+                status_code=e.response.status_code, 
+                detail = str(e)
+            )
+        except httpx.RequestError as e:
+            logging.error(f"Request error:  {str(e)}")
+            raise HTTPException(
+                status_code=502,  
+                detail="Failed to connect to API"
+            )
+        except Exception as e:
+            logging.error(f"Error creating dense cohere embeddings {str(e)}")
+            raise HTTPException(
+                status_code=500, 
+                detail=str(e)
+            )
+        
+
+    
+    async def jina_dense_embeddings(self,model_name: str, dimension: int, inputs: list[str]):
+
+        url = urljoin(self.cohere_base_url, self.JINA_EMBED_SUFFIX)
+
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.jina_api_key}"
+        }
+        data = {
+            "model": model_name,
+            "dimensions": dimension,
+            "normalized": True,
+            "embedding_type": "float",
+            "input": inputs
+        }
+
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(url, headers=headers, json=data)
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPStatusError as e:
+            logging.error(f"HTTP error: {e.response.status_code} - {str(e)}")
+            raise HTTPException(
+                status_code=e.response.status_code, 
+                detail = str(e)
+            )
+        except httpx.RequestError as e:
+            logging.error(f"Request error:  {str(e)}")
+            raise HTTPException(
+                status_code=502,  # Bad Gateway (Failed to connect)
+                detail="Failed to connect to API"
+            )
+        except Exception as e:
+            logging.error(f"Error creating dense jina embeddings {str(e)}")
+            raise HTTPException(
+                status_code=500, 
+                detail=str(e)
+            )
+    
+    
