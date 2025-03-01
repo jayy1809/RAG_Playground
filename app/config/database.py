@@ -6,8 +6,9 @@ class DBHelper:
         self.client = AsyncIOMotorClient(settings.MONGODB_URL)
         self.db = self.client[settings.DATABASE_NAME]
         self.raw_data = self.db["raw_data"]
-        self.gt_data = self.db["gt_data"]
         self.index_upsert_collection = self.db["index_upsert"]
+        self.gt_data = self.db["gt_data"]
+   
 
     async def connect(self):
         try:

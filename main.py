@@ -1,7 +1,7 @@
 from fastapi import FastAPI
-from app.apis.file_upload import router as file_router
 from contextlib import asynccontextmanager
 from app.config.database import db_helper
+from app.apis import file_upload, index_upsert_route
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -12,7 +12,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-app.include_router(file_router)
+app.include_router(file_upload.router)
+app.include_router(index_upsert_route.router)
 
 @app.get("/")
 async def root():
