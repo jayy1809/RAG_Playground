@@ -19,15 +19,23 @@ class FileUploadController:
                 status_code=status.HTTP_200_OK
             )
         except Exception as e:
+            # raise HTTPException(
+            #     status_code = 500,
+            #     detail = JSONResponse(
+            #         content = {
+            #             "data": {},
+            #             "statuscode": 500,
+            #             "detail": "File upload failed",
+            #             "error": str(e)
+            #         },
+            #         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+            #     )
             raise HTTPException(
-                status_code = 500,
-                detail = JSONResponse(
-                    content = {
-                        "data": {},
-                        "statuscode": 500,
-                        "detail": "File upload failed",
-                        "error": str(e)
-                    },
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={
+                    "data": {},
+                    "statuscode": 500,
+                    "detail": "File upload failed",
+                    "error": str(e)
+                }
             )

@@ -311,7 +311,7 @@ async def main():
             "input_data": input_data
         }
         async with httpx.AsyncClient() as client:
-            response = await client.post('http://127.0.0.1:8000/upload-files', json = payload)
+            response = await client.post('http://127.0.0.1:8000/upload-files', json = payload, timeout=75.0)
             if response.status_code == 200:
                 st.success("Files uploaded successfully!")
                 st.json(response.json())
