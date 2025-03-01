@@ -7,6 +7,7 @@ class DBHelper:
         self.db = self.client[settings.DATABASE_NAME]
         self.raw_data = self.db["raw_data"]
         self.gt_data = self.db["gt_data"]
+        self.index_upsert_collection = self.db["index_upsert"]
 
     async def connect(self):
         try:

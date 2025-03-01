@@ -25,7 +25,7 @@ class PineconeService:
         
     async def list_pinecone_indexes(self):
         url = self.list_index_url
-        
+
         headers = {
             "Api-Key": self.pinecone_api_key,
             "X-Pinecone-API-Version": self.api_version
@@ -46,7 +46,7 @@ class PineconeService:
             logging.error(f"Error creating index: {str(e)}")
             raise HTTPException(status_code=500, detail=str(e))
 
-    async def create_index(self, index_name: str, dimension: int, metric: str, cloud: str, region: str) -> Dict[str, Any]:
+    async def create_index(self, index_name: str, dimension: int, metric: str) -> Dict[str, Any]:
         if self.pc.has_index(index_name) == False:
             index_data = {
                 "name": index_name,
@@ -54,8 +54,8 @@ class PineconeService:
                 "metric": metric,
                 "spec":{
                     "serverless":{
-                        "cloud": cloud,
-                        "region": region
+                        "cloud": "aws",
+                        "region": "us-east-1"
                     }
                 }
             }
@@ -108,51 +108,27 @@ class PineconeService:
     
     
 
-    async def upsert_format(chunks:list, vector_embeddings, sparse_embeddings, image_chunks:bool = False):
-        
-        if vector_embeddings is None or sparse_embeddings is None:
-            print("vector embeddings or sparse embeddings is None so sleep")
-            time.sleep(2)
-
-        vector_embeddings_usage = vector_embeddings["usage"].get("total_tokens")
-        sparse_embeddings_usage = sparse_embeddings["usage"].get("total_tokens")
-
-        
-        prefix = "image" if image_chunks else "text"
-
-        # file_path_name = file_path.split(".")[0]
+    async def upsert_format(self, chunks:list, vector_embeddings: list, sparse_embeddings: list):
         results = []
         for i in range(len(chunks)):
-            file_name = chunks[i]["file_name"]
             result = {
-                "id":  f"{file_name}_#{prefix}_chunk_index_{i+1}",
-                "values": vector_embeddings["data"][i]["values"],
+                "id": chunks[i]["_id"],
+                "values": vector_embeddings[i],
                 "metadata": {
-                    "text":  chunks[i]["text"],
-                    "file_name": f"{file_name}",
-                    "page_no": chunks[i].get("page_number", ""),
+                    "text":  chunks[i]["text_content"],
+                    "link": chunks[i]["link"],
+                    "keyword": chunks[i]["keyword"],
                     "created_at": datetime.now().strftime(
                         "%Y-%m-%d %H:%M:%S"
                     ),
                 },
                 "sparse_values": {
-                    "indices": sparse_embeddings["data"][i]["sparse_indices"],
-                    "values": sparse_embeddings["data"][i]["sparse_values"]
+                    "indices": sparse_embeddings[i]["indices"],
+                    "values": sparse_embeddings[i]["values"]
                 }
-                
             }
             results.append(result)
-        
-        token_usage = {
-            "vector_embeddings_usage": vector_embeddings_usage,
-            "sparse_embeddings_usage": sparse_embeddings_usage
-        }
-        
-        with open("tokens_usage.txt", "a") as file:
-            file.write(json.dumps(token_usage, indent=4))
-        
         return results
-
 
 
     async def upsert_vectors(self, index_host, input, namespace):

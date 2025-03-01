@@ -56,7 +56,9 @@ class EmbeddingService:
                 response = await client.post(url, headers=headers, json=payload)
                 response.raise_for_status()
                 print("embeddings generated")
-                return response.json()
+                response = response.json()
+                list_result = [item["values"] for item in response["data"]]
+                return list_result
             
         except httpx.HTTPStatusError as e:
                 parsed_response = json.loads(response.content.decode("utf-8"))
@@ -71,13 +73,8 @@ class EmbeddingService:
 
     def pinecone_sparse_embeddings(self, inputs):
         try:
-            text_list = []
-            for input in inputs:
-                    text = input.get("text")
-                    text_list.append(text)
-
             bm25 = BM25Encoder.default()
-            sparse_vector = bm25.encode_documents(text_list)
+            sparse_vector = bm25.encode_documents(inputs)
             return sparse_vector
         
         except Exception as e:
@@ -105,7 +102,10 @@ class EmbeddingService:
             async with httpx.AsyncClient() as client:
                 response = await client.post(url, headers=headers, json=data)
                 response.raise_for_status()
-                return response.json()
+                # return response.json()
+                response = response.json()
+                result = response['embeddings']['float']
+                return result
         except httpx.HTTPStatusError as e:
             logging.error(f"HTTP error: {e.response.status_code} - {str(e)}")
             raise HTTPException(
@@ -147,7 +147,12 @@ class EmbeddingService:
             async with httpx.AsyncClient() as client:
                 response = await client.post(url, headers=headers, json=data)
                 response.raise_for_status()
-                return response.json()
+                # return response.json()
+                response = response.json()
+                result = [item["embedding"] for item in response["data"]]
+                return result
+
+
         except httpx.HTTPStatusError as e:
             logging.error(f"HTTP error: {e.response.status_code} - {str(e)}")
             raise HTTPException(
