@@ -4,7 +4,7 @@ from typing import List, Dict
 class EvaluationService:
     
     @staticmethod
-    def _discounted_cumulative_gain_at_k(retrieved_docs: List[Dict], ground_truth: List[str], k: int) -> float:
+    def _discounted_cumulative_gain_at_k(retrieved_docs: List[Dict], ground_truth: List[int], k: int) -> float:
         """
         Computes the Discounted Cumulative Gain (DCG) @ K.
         """
@@ -15,7 +15,7 @@ class EvaluationService:
             if k <= 0:
                 raise ValueError("Parameter 'k' should be a positive integer.")
             
-            retrieved_texts = [doc["chunk"] for doc in retrieved_docs[:k]]
+            retrieved_texts = [doc["id"] for doc in retrieved_docs[:k]]
             relevance_scores = [1 if doc in ground_truth else 0 for doc in retrieved_texts]
             
             if not relevance_scores:
@@ -33,7 +33,7 @@ class EvaluationService:
 
 
     @staticmethod
-    def _ideal_discounted_cumulative_gain_at_k(ground_truth: List[str], k: int) -> float:
+    def _ideal_discounted_cumulative_gain_at_k(ground_truth: List[int], k: int) -> float:
         """
         Computes the Ideal Discounted Cumulative Gain (IDCG) @ K.
         """
@@ -60,7 +60,7 @@ class EvaluationService:
             return 0.0
     
     @staticmethod
-    def normalized_discounted_cumulative_gain_at_k(retrieved_docs: List[Dict], ground_truth: List[str], k: int) -> float:
+    def normalized_discounted_cumulative_gain_at_k(retrieved_docs: List[Dict], ground_truth: List[Dict], k: int) -> float:
         """
         Computes the Normalized Discounted Cumulative Gain (NDCG) @ K.
         """
@@ -71,10 +71,11 @@ class EvaluationService:
             if k <= 0:
                 raise ValueError("Parameter 'k' should be a positive integer.")
             
+            ground_truth_texts_ids = [doc["id"] for doc in ground_truth]
             ndcg_at_k = {}
             for i in range(k):
-                dcg_at_i = EvaluationService._discounted_cumulative_gain_at_k(retrieved_docs, ground_truth, i+1)
-                idcg_at_i = EvaluationService._ideal_discounted_cumulative_gain_at_k(ground_truth, i+1)
+                dcg_at_i = EvaluationService._discounted_cumulative_gain_at_k(retrieved_docs, ground_truth_texts_ids, i+1)
+                idcg_at_i = EvaluationService._ideal_discounted_cumulative_gain_at_k(ground_truth_texts_ids, i+1)
                 ndcg_at_i = dcg_at_i / idcg_at_i if idcg_at_i > 0 else 0.0
                 
                 ndcg_at_k[f'NDCG@{i+1}'] = ndcg_at_i
@@ -86,7 +87,7 @@ class EvaluationService:
             return {}
     
     @staticmethod
-    def bpref(retrieved_docs: List[Dict], ground_truth: List[str]) -> float:
+    def bpref(retrieved_docs: List[Dict], ground_truth: List[Dict]) -> float:
         """
         Computes BPREF (Binary Preference).
         """
@@ -94,7 +95,8 @@ class EvaluationService:
             if not isinstance(retrieved_docs, list) or not isinstance(ground_truth, list):
                 raise TypeError("Invalid input types. Expected (List[Dict], List[str]).")
 
-            relevant_docs = set(ground_truth)
+            ground_truth_ids = [doc["id"] for doc in ground_truth]
+            relevant_docs = set(ground_truth_ids)
             irrelevant_count = 0
             total_relevant = len(relevant_docs)
             bpref_score = 0.0
@@ -103,7 +105,7 @@ class EvaluationService:
                 return 0.0 
             
             for doc in retrieved_docs:
-                if doc["chunk"] in relevant_docs:
+                if doc["id"] in relevant_docs:
                     bpref_score += (1 - (irrelevant_count / total_relevant))
                 else:
                     irrelevant_count += 1
