@@ -15,7 +15,7 @@ async def index_upsert(
 
     return JSONResponse(
         content = {
-            "data" : {"host": response.json()},
+            "data" : {"host": response},
             "status_code" : status.HTTP_200_OK,
             "detail" : "Upserted Successfully",
             "error" : ""

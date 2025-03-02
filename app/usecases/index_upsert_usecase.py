@@ -6,6 +6,7 @@ from app.repositories.index_upsert_repository import IndexUpsertRepository
 from app.services.pinecone_service import PineconeService
 from app.services.embedding_service import EmbeddingService
 import asyncio
+import json 
 
 class IndexUpsertUseCase:
     def __init__(
@@ -47,6 +48,7 @@ class IndexUpsertUseCase:
         all_embeddings = []
         embedding_provider = self.model_provider.get(embed_model)
         
+        
         if embedding_provider == "pinecone":
             inputs = [{"text": item["text"]} for item in data]
         elif embedding_provider == "cohere":
@@ -70,7 +72,6 @@ class IndexUpsertUseCase:
         
         text_list = [item["text"] for item in data]
         sparse_embeds = self.embedding_service.pinecone_sparse_embeddings(text_list)
-
         final_upsert_format = await self.pinecone_service.upsert_format(data, all_embeddings, sparse_embeds)
         return await self.pinecone_service.upsert_vectors(index_host, final_upsert_format, namespace_name)
 
@@ -107,7 +108,7 @@ class IndexUpsertUseCase:
             return {"message": "such dimension, similarity metric, filename and embed_model configuration already exists, move on to query"}
         
         with open(self.file_path, "r") as file:
-            data = file.read()
+            data = json.load(file)
 
         already_index = await self.index_upsert_repository.find_matching_index(dimension, similarity_metric)
         

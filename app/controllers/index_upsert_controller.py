@@ -12,6 +12,7 @@ class IndexUpsertController:
         self.index_upsert_usecase = index_upsert_usecase
 
     async def index_upsert(self, request):
+        
         return await self.index_upsert_usecase.index_upsert(request)
         dimension = request.dimension
         similarity_metric = request.similarity_metric

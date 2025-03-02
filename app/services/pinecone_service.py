@@ -115,7 +115,7 @@ class PineconeService:
                 "id": chunks[i]["_id"],
                 "values": vector_embeddings[i],
                 "metadata": {
-                    "text":  chunks[i]["text_content"],
+                    "text":  chunks[i]["text"],
                     "link": chunks[i]["link"],
                     "keyword": chunks[i]["keyword"],
                     "created_at": datetime.now().strftime(
@@ -164,14 +164,14 @@ class PineconeService:
     
 
 
-    def hybrid_scale(dense, sparse, alpha: float):
+    def hybrid_scale(self, dense, sparse, alpha: float):
     
         if alpha < 0 or alpha > 1:
             raise ValueError("Alpha must be between 0 and 1")
         # scale sparse and dense vectors to create hybrid search vecs
         hsparse = {
-            'indices': sparse['sparse_indices'],
-            'values':  [v * (1 - alpha) for v in sparse['sparse_values']]
+            'indices': sparse['indices'],
+            'values':  [v * (1 - alpha) for v in sparse['values']]
         }
         hdense = [v * alpha for v in dense]
         return hdense, hsparse
@@ -193,12 +193,12 @@ class PineconeService:
             "X-Pinecone-API-Version": self.api_version
         }
 
-        hdense , hsparse = self.hybrid_scale(query_vector_embeds["data"][0]["values"], query_sparse_embeds["data"][0], alpha)
+        hdense , hsparse = self.hybrid_scale(query_vector_embeds, query_sparse_embeds, alpha)
 
-        print(f"length of vector embeddings : {len(query_vector_embeds['data'][0]['values'])}")
-        print(f"vector embeds : {query_vector_embeds['data'][0]['values']}")
-        print(f"sparse indices : {query_sparse_embeds['data'][0]['sparse_indices']}")
-        print(f"sparse values : {query_sparse_embeds['data'][0]['sparse_values']}")
+        print(f"length of vector embeddings : {len(query_vector_embeds)}")
+        print(f"vector embeds : {query_vector_embeds}")
+        print(f"sparse indices : {query_sparse_embeds['indices']}")
+        print(f"sparse values : {query_sparse_embeds['values']}")
 
         payload = {
             "includeValues": False,
