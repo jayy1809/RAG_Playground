@@ -1,20 +1,17 @@
 import asyncio
+
+import httpx
 import streamlit as st
 
 
 def initialize_session_state():
 
     if "search_performed_1" not in st.session_state:
-
-    if "search_performed_1" not in st.session_state:
         st.session_state.search_performed_1 = False
-    if "search_performed_2" not in st.session_state:
     if "search_performed_2" not in st.session_state:
         st.session_state.search_performed_2 = False
     if "reranking_performed_1" not in st.session_state:
-    if "reranking_performed_1" not in st.session_state:
         st.session_state.reranking_performed_1 = False
-    if "reranking_performed_2" not in st.session_state:
     if "reranking_performed_2" not in st.session_state:
         st.session_state.reranking_performed_2 = False
     if "search_results" not in st.session_state:
@@ -24,12 +21,11 @@ def initialize_session_state():
     if "file_uploaded" not in st.session_state:
         st.session_state.file_uploaded = False
     if "index_button_2_clicked" not in st.session_state:
-    if "index_button_2_clicked" not in st.session_state:
         st.session_state.index_button_2_clicked = False
     if "index_button_1_clicked" not in st.session_state:
-    if "index_button_1_clicked" not in st.session_state:
         st.session_state.index_button_1_clicked = False
-        
+
+
 def get_embedding_models():
     return [
         "",
@@ -44,7 +40,7 @@ def get_embedding_models():
         "embed-multilingual-v2.0",
         "jina-embeddings-v3",
     ]
-    
+
 
 def get_dimensions(dense_embedding_model: str) -> list:
     model_to_dimensions = {
@@ -60,9 +56,8 @@ def get_dimensions(dense_embedding_model: str) -> list:
     }
     return model_to_dimensions.get(dense_embedding_model, [])
 
-def reset_first_stage_result(pipeline_key):
 
-    if pipeline_key == "_1":
+def reset_first_stage_result(pipeline_key):
 
     if pipeline_key == "_1":
         st.session_state.search_performed_1 = False
@@ -73,9 +68,7 @@ def reset_first_stage_result(pipeline_key):
 
 
 def reset_second_stage_result(pipeline_key):
-
-    if pipeline_key == "_1":
-
+    
     if pipeline_key == "_1":
         st.session_state.reranking_performed_1 = False
         st.session_state.reranking_results[pipeline_key] = False
@@ -87,8 +80,6 @@ def reset_second_stage_result(pipeline_key):
 def perform_search_callback(pipeline_key):
 
     if pipeline_key == "_1":
-
-    if pipeline_key == "_1":
         st.session_state.search_performed_1 = True
 
     else:
@@ -97,8 +88,6 @@ def perform_search_callback(pipeline_key):
 
 
 def perform_reranking_callback(pipeline_key):
-
-    if pipeline_key == "_1":
 
     if pipeline_key == "_1":
         st.session_state.reranking_performed_1 = True
@@ -177,33 +166,36 @@ async def hybrid_search_pipeline(key: str, filename: str):
         "Enter Dimension of the Dense Model:",
         dimensions,
         key="dense_dimension" + key,
-        key="dense_dimension" + key,
     )
 
 
     if dense_embedding_model and dense_dimension:
 
-        if st.button("Create Index and Upsert Dataset", key="create_index" + key):
-            
+        if st.button(
+            "Create Index and Upsert Dataset", key="create_index" + key
+        ):
+
             payload = {
-                "file_name" : filename,
-                "embed_model" : dense_embedding_model,
-                "similarity_metric" : "dotproduct",
-                "dimension" : dense_dimension,
+                "file_name": filename,
+                "embed_model": dense_embedding_model,
+                "similarity_metric": "dotproduct",
+                "dimension": dense_dimension,
             }
-            
+
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     "http://127.0.0.1:8000/index-upsert",
-                    json = payload,
+                    json=payload,
                 )
-                
+
                 if response.status_code == 200:
-                    st.success("Index created and dataset upserted successfully!")
+                    st.success(
+                        "Index created and dataset upserted successfully!"
+                    )
                     st.json(response.json())
                 else:
                     st.error(f"Index creation and dataset upsert failed")
-            
+
             st.session_state.index_button_1_clicked = True
 
         if st.session_state.index_button_1_clicked:
@@ -225,34 +217,46 @@ async def hybrid_search_pipeline(key: str, filename: str):
             if query and top_k and alpha:
                 col1, col2 = st.columns([1, 1])
                 with col1:
-                    if st.button("Perform Similarity Search", key="perform_search" + key, on_click=perform_search_callback, args=(key,)):
-                        
+                    if st.button(
+                        "Perform Similarity Search",
+                        key="perform_search" + key,
+                        on_click=perform_search_callback,
+                        args=(key,),
+                    ):
+
                         payload = {
-                            "is_hybrid" : True,
-                            "file_name" : filename,
-                            "embedding_model" : dense_embedding_model,
-                            "dimension" : dense_dimension,
-                            "query" : query,
-                            "top_k" : top_k,
-                            "alpha" : alpha,
+                            "is_hybrid": True,
+                            "file_name": filename,
+                            "embedding_model": dense_embedding_model,
+                            "dimension": dense_dimension,
+                            "query": query,
+                            "top_k": top_k,
+                            "alpha": alpha,
                         }
-                        
+
                         async with httpx.AsyncClient() as client:
                             response = await client.post(
                                 "http://127.0.0.1:8000/query",
-                                json = payload,
+                                json=payload,
                             )
-                            
+
                             if response.status_code == 200:
                                 st.success("Search performed successfully!")
                                 st.json(response.json())
                             else:
                                 st.error(f"First stage retrieval failed")
 
-                            st.session_state.search_results[key] = response.json()
+                            st.session_state.search_results[key] = (
+                                response.json()
+                            )
 
                 with col2:
-                    if st.button("Reset Results", key="reset_similarity" + key, on_click=reset_first_stage_result, args=(key,)):
+                    if st.button(
+                        "Reset Results",
+                        key="reset_similarity" + key,
+                        on_click=reset_first_stage_result,
+                        args=(key,),
+                    ):
                         pass
 
             if st.session_state.search_results[key]:
@@ -278,11 +282,21 @@ async def hybrid_search_pipeline(key: str, filename: str):
                 if reranking_model and top_n:
                     col1, col2 = st.columns([1, 1])
                     with col1:
-                        if st.button("Perform Reranking", key="perform_reranking" + key, on_click=perform_reranking_callback, args=(key,)):
+                        if st.button(
+                            "Perform Reranking",
+                            key="perform_reranking" + key,
+                            on_click=perform_reranking_callback,
+                            args=(key,),
+                        ):
                             st.session_state.reranking_results[key] = True
 
                     with col2:
-                        if st.button("Reset Results", key="reset_renaked" + key, on_click=reset_second_stage_result, args=(key,)):
+                        if st.button(
+                            "Reset Results",
+                            key="reset_renaked" + key,
+                            on_click=reset_second_stage_result,
+                            args=(key,),
+                        ):
                             pass
                 else:
                     st.warning(
@@ -306,7 +320,6 @@ async def dense_search_pipeline(key: str, filename: str):
         "Enter Dimension of the Dense Model:",
         dimensions,
         key="dense_dimension" + key,
-        key="dense_dimension" + key,
     )
 
 
@@ -316,31 +329,33 @@ async def dense_search_pipeline(key: str, filename: str):
             "Enter Similarity Metric:",
             ["dotproduct", "cosine", "euclidean"],
             key="similarity_metric" + key,
-            ["dotproduct", "cosine", "euclidean"],
-            key="similarity_metric" + key,
         )
 
-        if st.button("Create Index and Upsert Dataset", key="create_index" + key):
-            
+        if st.button(
+            "Create Index and Upsert Dataset", key="create_index" + key
+        ):
+
             payload = {
-                "file_name" : filename,
-                "embed_model" : dense_embedding_model,
-                "similarity_metric" : similarity_metric,
-                "dimension" : dense_dimension,
+                "file_name": filename,
+                "embed_model": dense_embedding_model,
+                "similarity_metric": similarity_metric,
+                "dimension": dense_dimension,
             }
-            
+
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     "http://127.0.0.1:8000/index-upsert",
-                    json = payload,
+                    json=payload,
                 )
-                
+
                 if response.status_code == 200:
-                    st.success("Index created and dataset upserted successfully!")
+                    st.success(
+                        "Index created and dataset upserted successfully!"
+                    )
                     st.json(response.json())
                 else:
                     st.error(f"Index creation and dataset upsert failed")
-            
+
             st.session_state.index_button_2_clicked = True
 
         if st.session_state.index_button_2_clicked:
@@ -354,34 +369,46 @@ async def dense_search_pipeline(key: str, filename: str):
             if query and top_k:
                 col1, col2 = st.columns([1, 1])
                 with col1:
-                    if st.button("Perform Similarity Search", key="perform_search" + key, on_click=perform_search_callback, args=(key,)):
-                        
+                    if st.button(
+                        "Perform Similarity Search",
+                        key="perform_search" + key,
+                        on_click=perform_search_callback,
+                        args=(key,),
+                    ):
+
                         payload = {
-                            "is_hybrid" : False,
-                            "file_name" : filename,
-                            "embedding_model" : dense_embedding_model,
-                            "dimension" : dense_dimension,
-                            "similarity_metric" : similarity_metric,
-                            "query" : query,
-                            "top_k" : top_k,
+                            "is_hybrid": False,
+                            "file_name": filename,
+                            "embedding_model": dense_embedding_model,
+                            "dimension": dense_dimension,
+                            "similarity_metric": similarity_metric,
+                            "query": query,
+                            "top_k": top_k,
                         }
-                        
+
                         async with httpx.AsyncClient() as client:
                             response = await client.post(
                                 "http://127.0.0.1:8000/query",
-                                json = payload,
+                                json=payload,
                             )
-                            
+
                             if response.status_code == 200:
                                 st.success("Search performed successfully!")
                                 st.json(response.json())
                             else:
                                 st.error(f"First stage retrieval failed")
-                                
-                            st.session_state.search_results[key] = response.json()
+
+                            st.session_state.search_results[key] = (
+                                response.json()
+                            )
 
                 with col2:
-                    if st.button("Reset Results", key="reset_similarity" + key, on_click=reset_first_stage_result, args=(key,)):
+                    if st.button(
+                        "Reset Results",
+                        key="reset_similarity" + key,
+                        on_click=reset_first_stage_result,
+                        args=(key,),
+                    ):
                         pass
 
             if st.session_state.search_results[key]:
@@ -407,11 +434,21 @@ async def dense_search_pipeline(key: str, filename: str):
                 if reranking_model and top_n:
                     col1, col2 = st.columns([1, 1])
                     with col1:
-                        if st.button("Perform Reranking", key="perform_reranking" + key, on_click=perform_reranking_callback, args=(key,)):
+                        if st.button(
+                            "Perform Reranking",
+                            key="perform_reranking" + key,
+                            on_click=perform_reranking_callback,
+                            args=(key,),
+                        ):
                             st.session_state.reranking_results[key] = True
 
                     with col2:
-                        if st.button("Reset Results", key="reset_reranked" + key, on_click=reset_second_stage_result, args=(key,)):
+                        if st.button(
+                            "Reset Results",
+                            key="reset_reranked" + key,
+                            on_click=reset_second_stage_result,
+                            args=(key,),
+                        ):
                             pass
                 else:
                     st.warning(
@@ -433,23 +470,13 @@ async def main():
         page_title="RAG Pipeline Comparison Tool | Pinecone",
         layout="wide",
         page_icon="🧊",
-        page_title="RAG Pipeline Comparison Tool | Pinecone",
-        layout="wide",
-        page_icon="🧊",
     )
 
 
     st.title("RAG Pipeline Comparison Tool")
-    st.markdown(
-        """
-    st.markdown(
-        """
+    st.markdown("""
         This tool allows you to configure and compare the results of two different RAG pipelines. 
         The left and right sides of the screen will display different pipelines, their configuration, and the resulting comparison.
-    """
-    )
-
-    uploaded_file = st.file_uploader("Upload a file:", type=["json"])
     """
     )
 
@@ -476,12 +503,9 @@ async def main():
         st.warning("Please upload the JSON files for the pipelines to compare.")
 
     else:
-
-    else:
         col1, col2 = st.columns(2)
         with col1:
             hybrid_search = st.radio(
-                "Do you want to perform a hybrid search?",
                 "Do you want to perform a hybrid search?",
                 ("Yes", "No"),
                 key=f"hybrid_search_1",
@@ -489,37 +513,37 @@ async def main():
 
 
             if hybrid_search == "Yes":
-                await hybrid_search_pipeline(key="_1", filename = uploaded_file.name)
+                await hybrid_search_pipeline(
+                    key="_1", filename=uploaded_file.name
+                )
             else:
-                await dense_search_pipeline(key="_1", filename = uploaded_file.name)
+                await dense_search_pipeline(
+                    key="_1", filename=uploaded_file.name
+                )
 
             st.subheader("Results")
             display_results_tabs("_1")
 
-            display_results_tabs("_1")
-
         with col2:
-
-
+            
             hybrid_search = st.radio(
                 "Do you want to perform a hybrid search?",
-                "Do you want to perform a hybrid search?",
                 ("Yes", "No"),
-                key="hybrid_search_2",
                 key="hybrid_search_2",
             )
 
 
             if hybrid_search == "Yes":
-                await hybrid_search_pipeline(key="_2", filename = uploaded_file.name)
+                await hybrid_search_pipeline(
+                    key="_2", filename=uploaded_file.name
+                )
             else:
-                await dense_search_pipeline(key="_2", filename = uploaded_file.name)
+                await dense_search_pipeline(
+                    key="_2", filename=uploaded_file.name
+                )
 
             st.subheader("Results")
             display_results_tabs("_2")
-
-            display_results_tabs("_2")
-
 
 if __name__ == "__main__":
     asyncio.run(main())
