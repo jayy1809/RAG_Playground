@@ -31,13 +31,12 @@ class Settings(BaseSettings):
     MIN_CHUNKS_FOR_MULTI_QUERY: int = 2
     MAX_CHUNKS_FOR_MULTI_QUERY: int = 5
     LLM_REQUEST_DELAY: float = 0.7
-    CHUNK_TEXT_SIZE: int = 512
-    CHUNK_TEXT_OVERLAP: int = 64
     UPLOAD_DIR: str = "uploads/"
-    # GROUND_TRUTH_FILE_PATH = os.path.join(UPLOAD_DIR, "raw_dataset.json")
+    GROUND_TRUTH_FILE_NAME: str = "raw_dataset.json"
     # GROUND_TRUTH_CHUNK_SIZE = 1000
     MONGODB_URL: str = "mongodb://localhost:27017"
     DATABASE_NAME: str = "RAG_Playground"
+    GROQ_BASE_URL: str = "https://api.groq.com/openai/v1/chat/completions"
     # COLLECTION_NAME = "raw_dataset"
 
     class Config:

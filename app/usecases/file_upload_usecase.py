@@ -20,7 +20,9 @@ class FileUploadUseCase:
 
     async def store_file_locally(self, file):
         os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-        file_path = os.path.join(settings.UPLOAD_DIR, "raw_dataset.json")
+        file_path = os.path.join(
+            settings.UPLOAD_DIR, settings.GROUND_TRUTH_FILE_NAME
+        )
         async with aiofiles.open(file_path, "w") as f:
             await f.write(file)
         return file_path
@@ -50,24 +52,9 @@ class FileUploadUseCase:
         return [{"question": q, "chunks": [chunk_ref]} for q in questions]
 
     async def process_multi_chunk(self, chunks):
-        print(f"Input chunks type: {type(chunks)}")
-        print(f"First chunk type: {type(chunks[0]) if chunks else 'No chunks'}")
-
-        chunk_data_for_llm = []
-        for chunk in chunks:
-            if "text" not in chunk:
-                print(f"Warning: 'text' field missing in chunk: {chunk.keys()}")
-                text = (
-                    chunk.get("content", "")
-                    or chunk.get("body", "")
-                    or str(chunk)
-                )
-            else:
-                text = chunk["text"]
-
-        chunk_data_for_llm.append(
+        chunk_data_for_llm = [
             {"text": chunk["text"], "_id": chunk["_id"]} for chunk in chunks
-        )
+        ]
 
         chunk_refs = [
             {
@@ -77,16 +64,10 @@ class FileUploadUseCase:
             }
             for chunk in chunks
         ]
-        print(
-            f"Prepared chunk_data_for_llm: {chunk_data_for_llm[0] if chunk_data_for_llm else 'Empty'}"
-        )
-
         response_json = await self.llm_utils.generate_multi_chunk_question(
             chunk_data_for_llm
         )
 
-        print(f"LLM response type: {type(response)}")
-        print(f"LLM response: {response}")
         if isinstance(response_json, str):
             response = json.loads(response_json)
         else:
@@ -113,16 +94,15 @@ class FileUploadUseCase:
     async def generate_multi_chunk_queries(self, chunks_with_metadata):
         dataset = []
         tasks = []
-        for _ in range(settings.MULTI_CHUNK_QUERIES_COUNT):
-            num_chunks = random.randint(
-                settings.MIN_CHUNKS_FOR_MULTI_QUERY,
-                settings.MAX_CHUNKS_FOR_MULTI_QUERY,
-            )
-            selected_items = random.sample(
-                chunks_with_metadata, min(num_chunks, len(chunks_with_metadata))
-            )
-            task = self.process_multi_chunk(list(selected_items))
-            tasks.append(task)
+        num_chunks = random.randint(
+            settings.MIN_CHUNKS_FOR_MULTI_QUERY,
+            settings.MAX_CHUNKS_FOR_MULTI_QUERY,
+        )
+        selected_items = random.sample(
+            chunks_with_metadata, min(num_chunks, len(chunks_with_metadata))
+        )
+        task = self.process_multi_chunk(selected_items)
+        tasks.append(task)
         results = await asyncio.gather(*tasks)
         for result in results:
             dataset.extend(result)
@@ -144,12 +124,11 @@ class FileUploadUseCase:
             single_chunk_dataset = await self.generate_single_chunk_queries(
                 enriched_data
             )
-            # multi_chunk_dataset = await self.generate_multi_chunk_queries(enriched_data)
-            complete_dataset = single_chunk_dataset
-            # complete_dataset = multi_chunk_dataset
-            # complete_dataset = single_chunk_dataset + multi_chunk_dataset
+            multi_chunk_dataset = await self.generate_multi_chunk_queries(
+                enriched_data
+            )
+            complete_dataset = single_chunk_dataset + multi_chunk_dataset
 
-            # Prepare dataset for MongoDB by removing or regenerating _id fields
             mongo_dataset = []
             for item in complete_dataset:
                 new_item = item.copy()

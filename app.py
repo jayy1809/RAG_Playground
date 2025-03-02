@@ -235,7 +235,9 @@ async def hybrid_search_pipeline(key: str, filename: str):
                             else:
                                 st.error(f"First stage retrieval failed")
 
-                            st.session_state.search_results[key] = response.json()
+                            st.session_state.search_results[key] = (
+                                response.json()
+                            )
 
                 with col2:
                     if st.button(
@@ -276,10 +278,12 @@ async def hybrid_search_pipeline(key: str, filename: str):
                             args=(key,),
                         ):
                             payload = {
-                                "model_name" : reranking_model,
-                                "query" : query,
-                                "top_n" : top_n,
-                                "documents" : st.session_state.search_results[key]
+                                "model_name": reranking_model,
+                                "query": query,
+                                "top_n": top_n,
+                                "documents": st.session_state.search_results[
+                                    key
+                                ],
                             }
 
                             async with httpx.AsyncClient() as client:
@@ -289,12 +293,16 @@ async def hybrid_search_pipeline(key: str, filename: str):
                                 )
 
                                 if response.status_code == 200:
-                                    st.success("Reranking performed successfully!")
+                                    st.success(
+                                        "Reranking performed successfully!"
+                                    )
                                     st.json(response.json())
                                 else:
                                     st.error(f"Second stage retrieval failed")
 
-                                st.session_state.reranking_results[key] = response.json()
+                                st.session_state.reranking_results[key] = (
+                                    response.json()
+                                )
 
                     with col2:
                         if st.button(
@@ -403,7 +411,9 @@ async def dense_search_pipeline(key: str, filename: str):
                             else:
                                 st.error(f"First stage retrieval failed")
 
-                            st.session_state.search_results[key] = response.json()
+                            st.session_state.search_results[key] = (
+                                response.json()
+                            )
 
                 with col2:
                     if st.button(
@@ -444,10 +454,12 @@ async def dense_search_pipeline(key: str, filename: str):
                             args=(key,),
                         ):
                             payload = {
-                                "model_name" : reranking_model,
-                                "query" : query,
-                                "top_n" : top_n,
-                                "documents" : st.session_state.search_results[key]
+                                "model_name": reranking_model,
+                                "query": query,
+                                "top_n": top_n,
+                                "documents": st.session_state.search_results[
+                                    key
+                                ],
                             }
 
                             async with httpx.AsyncClient() as client:
@@ -457,12 +469,16 @@ async def dense_search_pipeline(key: str, filename: str):
                                 )
 
                                 if response.status_code == 200:
-                                    st.success("Reranking performed successfully!")
+                                    st.success(
+                                        "Reranking performed successfully!"
+                                    )
                                     st.json(response.json())
                                 else:
                                     st.error(f"Second stage retrieval failed")
 
-                                st.session_state.reranking_results[key] = response.json()
+                                st.session_state.reranking_results[key] = (
+                                    response.json()
+                                )
 
                     with col2:
                         if st.button(
@@ -561,6 +577,7 @@ async def main():
 
             st.subheader("Results")
             display_results_tabs("_2")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

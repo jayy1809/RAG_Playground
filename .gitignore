@@ -4,7 +4,7 @@ ragenv/
 make_directories.py 
 make_init.py
 ragPlayground/
-.venv
+/venv
 /uploaded_data
 venv/
 /uploads
