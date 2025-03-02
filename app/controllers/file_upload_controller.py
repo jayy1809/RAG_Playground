@@ -1,6 +1,8 @@
-from app.usecases.file_upload_usecase import FileUploadUseCase
-from fastapi import HTTPException, Depends, status
+from fastapi import Depends, HTTPException, status
 from fastapi.responses import JSONResponse
+
+from app.usecases.file_upload_usecase import FileUploadUseCase
+
 
 class FileUploadController:
     def __init__(self, usecase: FileUploadUseCase = Depends()):
@@ -10,13 +12,13 @@ class FileUploadController:
         try:
             response_data = await self.usecase.execute(request_data)
             return JSONResponse(
-                content = {
+                content={
                     "data": response_data,
                     "statuscode": 200,
                     "detail": "File uploaded successfully",
-                    "error": ""
+                    "error": "",
                 },
-                status_code=status.HTTP_200_OK
+                status_code=status.HTTP_200_OK,
             )
         except HTTPException as e:
             raise e
@@ -27,6 +29,6 @@ class FileUploadController:
                     "data": {},
                     "statuscode": 500,
                     "detail": "File upload failed",
-                    "error": str(e)
-                }
+                    "error": str(e),
+                },
             )

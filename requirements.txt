@@ -49,7 +49,7 @@ orjson==3.10.15
 packaging==24.2
 pandas==2.2.3
 pillow==11.1.0
-pinecone-client==6.0.0
+pinecone
 pinecone-plugin-interface==0.0.7
 pinecone-text==0.9.0
 proto-plus==1.26.0

@@ -1,5 +1,7 @@
 from motor.motor_asyncio import AsyncIOMotorClient
+
 from app.config.settings import settings
+
 
 class DBHelper:
     def __init__(self):
@@ -8,7 +10,6 @@ class DBHelper:
         self.raw_data = self.db["raw_data"]
         self.index_upsert_collection = self.db["index_upsert"]
         self.gt_data = self.db["gt_data"]
-   
 
     async def connect(self):
         try:
@@ -20,9 +21,9 @@ class DBHelper:
                     maxIdleTimeMS=50000,
                     connectTimeoutMS=20000,
                 )
-                
+
                 self.db = self.client[settings.DATABASE_NAME]
-                await self.client.admin.command('ping')
+                await self.client.admin.command("ping")
                 await self.create_collections()
 
         except Exception as e:
@@ -47,5 +48,6 @@ class DBHelper:
             self.client.close()
             self.client = None
             self.db = None
+
 
 db_helper = DBHelper()

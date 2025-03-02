@@ -1,5 +1,6 @@
 from app.config.database import db_helper
 
+
 class GTDataRepo:
     def __init__(self):
         self.collection = db_helper.gt_data

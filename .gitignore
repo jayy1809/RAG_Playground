@@ -10,3 +10,4 @@ venv/
 /uploads
 .DS_Store
 uploads/
+linters.sh

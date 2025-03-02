@@ -1,5 +1,6 @@
 from app.config.database import db_helper
 
+
 class RawDataRepo:
     def __init__(self):
         self.collection = db_helper.raw_data
