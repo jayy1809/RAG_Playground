@@ -1,14 +1,16 @@
-from pydantic import BaseModel
 from typing import Optional
+
+from pydantic import BaseModel
+
 
 class QueryEndPointRequest(BaseModel):
     is_hybrid: bool
-    filename: str
+    file_name: str
     embedding_model: str
     dimension: int
     similarity_metric: str = "dotproduct"
     query: str
     top_k: int
     alpha: Optional[float] = None
-    include_metadata: bool
+    include_metadata: bool = False
     filter_dict: Optional[dict] = None
