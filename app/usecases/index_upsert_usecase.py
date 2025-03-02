@@ -48,11 +48,11 @@ class IndexUpsertUseCase:
         embedding_provider = self.model_provider.get(embed_model)
         
         if embedding_provider == "pinecone":
-            inputs = [{"text": item["text_content"]} for item in data]
+            inputs = [{"text": item["text"]} for item in data]
         elif embedding_provider == "cohere":
             inputs = [item["text"] for item in data]
         elif embedding_provider == "jina":
-            inputs = [{"text": item["text_content"]} for item in data]
+            inputs = [{"text": item["text"]} for item in data]
         else:
             return []
         
