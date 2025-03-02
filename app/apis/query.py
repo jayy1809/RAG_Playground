@@ -1,5 +1,5 @@
-from fastapi.responses import JSONResponse  
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
 
 from app.controllers.query_controller import QueryController
 from app.models.schemas.query_schema import QueryEndPointRequest

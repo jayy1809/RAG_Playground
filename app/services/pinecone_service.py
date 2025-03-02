@@ -206,7 +206,6 @@ class PineconeService:
             query_vector_embeds, query_sparse_embeds, alpha
         )
 
-
         payload = {
             "includeValues": False,
             "includeMetadata": include_metadata,

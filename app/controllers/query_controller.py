@@ -1,8 +1,7 @@
-from fastapi.responses import JSONResponse
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends
 
-from app.usecases.query_usecase import QueryUseCase
 from app.models.schemas.query_schema import QueryEndPointRequest
+from app.usecases.query_usecase import QueryUseCase
 
 
 class QueryController:

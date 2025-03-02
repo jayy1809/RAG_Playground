@@ -11,6 +11,8 @@ from app.config.settings import settings
 logger = logging.getLogger(__name__)
 
 bm25 = BM25Encoder.default()
+
+
 class EmbeddingService:
     def __init__(self):
         self.pinecone_api_key = settings.PINECONE_API_KEY

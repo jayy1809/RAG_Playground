@@ -1,11 +1,10 @@
 from fastapi import Depends, HTTPException
 
-from app.services.pinecone_service import PineconeService
+from app.models.schemas.query_schema import QueryEndPointRequest
+from app.repositories.index_repository import IndexRepository
 from app.services.embedding_service import EmbeddingService
 from app.services.evaluation_service import EvaluationService
-from app.repositories.index_repository import IndexRepository
-from app.models.schemas.query_schema import QueryEndPointRequest
-
+from app.services.pinecone_service import PineconeService
 
 
 class QueryUseCase:

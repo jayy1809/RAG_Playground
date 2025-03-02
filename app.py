@@ -68,7 +68,7 @@ def reset_first_stage_result(pipeline_key):
 
 
 def reset_second_stage_result(pipeline_key):
-    
+
     if pipeline_key == "_1":
         st.session_state.reranking_performed_1 = False
         st.session_state.reranking_results[pipeline_key] = False
@@ -86,7 +86,6 @@ def perform_search_callback(pipeline_key):
         st.session_state.search_performed_2 = True
 
 
-
 def perform_reranking_callback(pipeline_key):
 
     if pipeline_key == "_1":
@@ -98,9 +97,7 @@ def perform_reranking_callback(pipeline_key):
 
 def display_results_tabs(key: str):
 
-
     tab1, tab2 = st.tabs(["Search Results", "Reranking Results"])
-
 
     with tab1:
         if key == "_1" and st.session_state.search_performed_1:
@@ -111,7 +108,6 @@ def display_results_tabs(key: str):
 
         else:
             st.info("Run a search to see results here.")
-
 
     with tab2:
         if key == "_1" and st.session_state.reranking_performed_1:
@@ -124,10 +120,7 @@ def display_results_tabs(key: str):
             st.info("Run reranking to see results here.")
 
 
-
-
 def display_search_results(results):
-
 
     if not results:
         st.info("No search results available.")
@@ -138,14 +131,11 @@ def display_search_results(results):
 
 def display_reranking_results(results):
 
-
     if not results:
         st.info("No reranking results available.")
         return
 
-
     st.success("Here are the reranking results:")
-
 
 
 async def hybrid_search_pipeline(key: str, filename: str):
@@ -167,7 +157,6 @@ async def hybrid_search_pipeline(key: str, filename: str):
         dimensions,
         key="dense_dimension" + key,
     )
-
 
     if dense_embedding_model and dense_dimension:
 
@@ -322,7 +311,6 @@ async def dense_search_pipeline(key: str, filename: str):
         key="dense_dimension" + key,
     )
 
-
     if dense_embedding_model and dense_dimension:
 
         similarity_metric = st.selectbox(
@@ -459,12 +447,9 @@ async def dense_search_pipeline(key: str, filename: str):
         st.warning("Please select the required models and dimensions.")
 
 
-
 async def main():
 
-
     initialize_session_state()
-
 
     st.set_page_config(
         page_title="RAG Pipeline Comparison Tool | Pinecone",
@@ -472,9 +457,9 @@ async def main():
         page_icon="🧊",
     )
 
-
     st.title("RAG Pipeline Comparison Tool")
-    st.markdown("""
+    st.markdown(
+        """
         This tool allows you to configure and compare the results of two different RAG pipelines. 
         The left and right sides of the screen will display different pipelines, their configuration, and the resulting comparison.
     """
@@ -511,7 +496,6 @@ async def main():
                 key=f"hybrid_search_1",
             )
 
-
             if hybrid_search == "Yes":
                 await hybrid_search_pipeline(
                     key="_1", filename=uploaded_file.name
@@ -525,13 +509,12 @@ async def main():
             display_results_tabs("_1")
 
         with col2:
-            
+
             hybrid_search = st.radio(
                 "Do you want to perform a hybrid search?",
                 ("Yes", "No"),
                 key="hybrid_search_2",
             )
-
 
             if hybrid_search == "Yes":
                 await hybrid_search_pipeline(
@@ -545,6 +528,6 @@ async def main():
             st.subheader("Results")
             display_results_tabs("_2")
 
+
 if __name__ == "__main__":
     asyncio.run(main())
-

@@ -38,34 +38,41 @@ class IndexUpsertRepository:
     async def add_index_upsert_details(self, indexupsert: IndexUpsert):
         try:
             # Check if an index with same dimension and similarity_metric exists
-            existing_index = await self.collection.find_one({
-                "dimension": indexupsert.dimension,
-                "similarity_metric": indexupsert.similarity_metric
-            })
-            
+            existing_index = await self.collection.find_one(
+                {
+                    "dimension": indexupsert.dimension,
+                    "similarity_metric": indexupsert.similarity_metric,
+                }
+            )
+
             if existing_index:
                 # Get the first namespace from the new data
                 new_namespace = indexupsert.namespaces[0]
-                
+
                 # Check if namespace with same name already exists
-                namespace_exists = any(ns["name"] == new_namespace.name for ns in existing_index.get("namespaces", []))
-                
+                namespace_exists = any(
+                    ns["name"] == new_namespace.name
+                    for ns in existing_index.get("namespaces", [])
+                )
+
                 if namespace_exists:
                     # Namespace already exists, no need to update
                     return str(existing_index["_id"])
-                
+
                 # Add new namespace to existing index
                 result = await self.collection.update_one(
                     {"_id": existing_index["_id"]},
-                    {"$push": {
-                        "namespaces": {
-                            "name": new_namespace.name,
-                            "details": {
-                                "filename": new_namespace.details.filename,
-                                "embedding_model": new_namespace.details.embedding_model
+                    {
+                        "$push": {
+                            "namespaces": {
+                                "name": new_namespace.name,
+                                "details": {
+                                    "filename": new_namespace.details.filename,
+                                    "embedding_model": new_namespace.details.embedding_model,
+                                },
                             }
                         }
-                    }}
+                    },
                 )
                 return str(existing_index["_id"])
             else:

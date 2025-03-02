@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 
 from fastapi import Depends, HTTPException
 
@@ -7,7 +8,7 @@ from app.models.domain.indexupsert import IndexUpsert, Namespace
 from app.repositories.index_upsert_repository import IndexUpsertRepository
 from app.services.embedding_service import EmbeddingService
 from app.services.pinecone_service import PineconeService
-import logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -42,8 +43,10 @@ class IndexUpsertUseCase:
         async with self.semaphore:
             try:
                 if provider == "pinecone":
-                    return await self.embedding_service.pinecone_dense_embeddings(
-                        chunk, embed_model, dimension=dimension
+                    return (
+                        await self.embedding_service.pinecone_dense_embeddings(
+                            chunk, embed_model, dimension=dimension
+                        )
                     )
                 elif provider == "cohere":
                     return await self.embedding_service.cohere_dense_embeddings(
@@ -54,7 +57,9 @@ class IndexUpsertUseCase:
                         embed_model, dimension, chunk
                     )
             except Exception as e:
-                logger.error(f"Error processing chunk with {provider} provider: {str(e)}")
+                logger.error(
+                    f"Error processing chunk with {provider} provider: {str(e)}"
+                )
                 raise HTTPException(status_code=500, detail=str(e))
 
     async def _get_embeddings(self, data, embed_model, dimension):
@@ -136,10 +141,11 @@ class IndexUpsertUseCase:
         )
 
         index_upsert.add_namespace(namespace)
-        return await self.index_upsert_repository.add_index_upsert_details(
+        return (
+            await self.index_upsert_repository.add_index_upsert_details(
                 index_upsert
             ),
-            
+        )
 
     async def index_upsert(self, request):
         try:
@@ -162,8 +168,10 @@ class IndexUpsertUseCase:
             with open(self.file_path, "r") as file:
                 data = json.load(file)
 
-            already_index = await self.index_upsert_repository.find_matching_index(
-                dimension, similarity_metric
+            already_index = (
+                await self.index_upsert_repository.find_matching_index(
+                    dimension, similarity_metric
+                )
             )
 
             if not already_index:
@@ -180,7 +188,6 @@ class IndexUpsertUseCase:
                 )
                 index_host = response.get("host")
 
-                
                 namespace_name = f"{file_name}-{embed_model}-namespace"
 
                 upsert_result = await self._prepare_and_upsert(
@@ -203,8 +210,6 @@ class IndexUpsertUseCase:
 
             index_name = already_index.get("index_name")
             index_host = already_index.get("index_host")
-            
-
 
             index_json = await self.pinecone_service.list_pinecone_indexes()
             index_list = index_json.get("indexes")
@@ -215,18 +220,24 @@ class IndexUpsertUseCase:
             print(f"already index outside if {already_index}")
             print(f"index list outside if {index_list}")
 
-            
-
             namespace_name = f"{file_name}-{embed_model}-namespace"
             upsert_result = await self._prepare_and_upsert(
                 data, embed_model, dimension, index_host, namespace_name
             )
 
             db_result = await self._save_in_db(
-                file_name, embed_model, index_name, index_host, dimension, similarity_metric
+                file_name,
+                embed_model,
+                index_name,
+                index_host,
+                dimension,
+                similarity_metric,
             )
 
-            return {"upsert_result": upsert_result, "database_result": db_result}
+            return {
+                "upsert_result": upsert_result,
+                "database_result": db_result,
+            }
 
         except Exception as e:
             logger.error(f"Error in index upsert {str(e)}")
