@@ -1,6 +1,5 @@
 import json
 import logging
-from urllib.parse import urljoin
 
 import httpx
 from fastapi import HTTPException
@@ -67,12 +66,11 @@ class RerankerService:
         self, model_name: str, query: str, documents: list, top_n: int
     ):
         # query will be string and documents will be list of strings
-        rerank_url = urljoin(self.cohere_base_url, self.RERANK_SUFFIX)
+        rerank_url = f"{self.cohere_base_url}/{self.RERANK_SUFFIX}"
 
         headers = {
             "content-type": "application/json",
             "accept": "application/json",
-            "X-Pinecone-API-Version": "2025-01",
             "Authorization": f"bearer {self.cohere_api_key}",
         }
 
@@ -123,7 +121,7 @@ class RerankerService:
             "documents": documents,
         }
 
-        rerank_url = urljoin(self.jina_base_url, self.RERANK_SUFFIX)
+        rerank_url = f"{self.jina_base_url}/{self.RERANK_SUFFIX}"
 
         try:
             async with httpx.AsyncClient(verify=False) as client:

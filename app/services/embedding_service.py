@@ -1,6 +1,5 @@
 import json
 import logging
-from urllib.parse import urljoin
 
 import httpx
 from fastapi import HTTPException
@@ -88,7 +87,7 @@ class EmbeddingService:
         input_type: str = "search_document",
     ):
 
-        url = urljoin(self.cohere_base_url, self.EMBED_SUFFIX)
+        url = f"{self.cohere_base_url}/{self.EMBED_SUFFIX}"
 
         headers = {
             "accept": "application/json",
@@ -128,7 +127,7 @@ class EmbeddingService:
         self, model_name: str, dimension: int, inputs: list[str]
     ):
 
-        url = urljoin(self.cohere_base_url, self.JINA_EMBED_SUFFIX)
+        url = f"{self.cohere_base_url}/{self.JINA_EMBED_SUFFIX}"
 
         headers = {
             "Content-Type": "application/json",
